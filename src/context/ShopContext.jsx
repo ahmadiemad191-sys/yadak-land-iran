@@ -99,6 +99,7 @@ export function ShopProvider({children}){
   };
 
   const previewDiscount=async(code,subtotal)=>{if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');const {data,error}=await supabase.rpc('preview_discount',{p_code:code,p_subtotal:Number(subtotal)});if(error)throw error;return data};
+  const createPayment=async({orderNumber,phone})=>{if(!supabase)throw new Error('اتصال فروشگاه به دیتابیس تنظیم نشده است.');const {data,error}=await supabase.functions.invoke('payment-request',{body:{orderNumber,phone}});if(error)throw error;if(data?.error)throw new Error(data.error);if(!data?.url)throw new Error('آدرس درگاه دریافت نشد.');return data};
   const createOrder=async({customer,items,discountCode,paymentMethod})=>{
     if(!supabaseConfigured)throw new Error('اتصال فروشگاه به دیتابیس تنظیم نشده است.');
     const payload=items.reduce((a,p)=>{const found=a.find(x=>String(x.id)===String(p.id));found?found.quantity++:a.push({id:p.id,quantity:1});return a},[]);
@@ -146,17 +147,19 @@ export function ShopProvider({children}){
   };
   const getOrderDetails=async(id)=>{
     if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');
-    const [{data:items,error:ie},{data:history,error:he}]=await Promise.all([
+    const [{data:items,error:ie},{data:history,error:he},{data:payments,error:pe}]=await Promise.all([
       supabase.from('order_items').select('*').eq('order_id',id).order('id'),
-      supabase.from('order_status_history').select('*').eq('order_id',id).order('created_at',{ascending:true})
+      supabase.from('order_status_history').select('*').eq('order_id',id).order('created_at',{ascending:true}),
+      supabase.from('payment_transactions').select('*').eq('order_id',id).order('created_at',{ascending:false})
     ]);
     if(ie)throw ie;
     if(he)throw he;
-    return {items:items||[],history:history||[]};
+    if(pe)throw pe;
+    return {items:items||[],history:history||[],payments:payments||[]};
   };
 
   const total=cart.reduce((s,p)=>s+Number(p.price||0),0);
-  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,updateDiscount,removeDiscount,updatePaymentStatus,updateOrderStatus,getOrderDetails,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
+  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,createPayment,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,updateDiscount,removeDiscount,updatePaymentStatus,updateOrderStatus,getOrderDetails,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
   return <C.Provider value={value}>{children}</C.Provider>
 }
 export const useShop=()=>useContext(C);

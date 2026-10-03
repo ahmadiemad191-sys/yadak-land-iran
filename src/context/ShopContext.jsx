@@ -105,10 +105,7 @@ export function ShopProvider({children}){
     return result;
   };
 
-  const signIn=async(email,password)=>{
-    if(!supabase)return {error:new Error('اتصال دیتابیس تنظیم نشده است.')};
-    return await supabase.auth.signInWithPassword({email,password});
-  };
+  const signIn=async(email,password)=>{if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password});if(error)throw error;setSession(data.session);const {data:p,error:pe}=await supabase.from('profiles').select('role').eq('id',data.user.id).maybeSingle();if(pe)throw pe;setIsAdmin(p?.role==='admin');return data};
   const signOut=async()=>{if(supabase)await supabase.auth.signOut()};
   const addDiscount=async item=>{
     const {data,error}=await supabase.from('discount_codes').insert({code:item.code.trim().toUpperCase(),type:item.type,value:Number(item.value),min_order:Number(item.minOrder||0),active:true}).select().single();

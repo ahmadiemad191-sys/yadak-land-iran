@@ -1,2 +1,47 @@
-import {useState} from 'react';import {useShop} from '../context/ShopContext';import {money} from '../data';
-export default function Checkout({navigate}){const{cart,total,checkout,updateProduct}=useShop();const[result,setResult]=useState(null);const[discountCode,setDiscountCode]=useState('');const[discount,setDiscount]=useState(null);const applyDiscount=()=>{const codes=JSON.parse(localStorage.getItem('yadakDiscounts')||'[]');const code=codes.find(x=>x.code.toUpperCase()===discountCode.trim().toUpperCase()&&x.active!==false);if(!code)return setDiscount({error:'کد تخفیف معتبر نیست.'});if(total<Number(code.minOrder||0))return setDiscount({error:'حداقل مبلغ خرید رعایت نشده است.'});const amount=code.type==='percent'?Math.min(total,Math.floor(total*Number(code.value)/100)):Math.min(total,Number(code.value));setDiscount({code:code.code,amount})};const finalTotal=Math.max(0,total-(discount?.amount||0));const submit=e=>{e.preventDefault();if(!cart.length)return alert('سبد خرید شما خالی است.');const check=checkout();if(!check.ok)return alert(check.message);const f=new FormData(e.currentTarget),id='YL-'+Date.now().toString().slice(-8),order={id,createdAt:new Date().toISOString(),customer:Object.fromEntries(f.entries()),discount:discount?.code?{code:discount.code,amount:discount.amount}:null,finalTotal,items:cart.reduce((a,p)=>{const x=a.find(i=>i.id===p.id);x?x.quantity++:a.push({...p,quantity:1});return a},[]).map(({id,name,price,img,cat,quantity})=>({id,name,price,img,cat,quantity})),total,status:'در انتظار پرداخت',paymentStatus:'در انتظار',history:[{status:'در انتظار پرداخت',at:new Date().toISOString()}]};localStorage.setItem('yadakOrders',JSON.stringify([order,...JSON.parse(localStorage.getItem('yadakOrders')||'[]')]));order.items.forEach(i=>{const base=cart.find(p=>String(p.id)===String(i.id));updateProduct(i.id,{stock:Math.max(0,Number(base?.stock??10)-i.quantity)})});localStorage.removeItem('yadakCart');setResult(id)};if(result)return <main className="checkout-page"><div className="success">سفارش شما با شماره <strong>{result}</strong> ثبت شد.<br/><button className="btn" onClick={()=>navigate('track',result)}>پیگیری سفارش</button></div></main>;return <main className="checkout-page"><div className="checkout-title"><h1>تکمیل سفارش</h1><p>اطلاعات ارسال را وارد کنید.</p></div><div className="checkout-layout"><form onSubmit={submit} className="panel-form"><h2>اطلاعات مشتری</h2><label>نام و نام خانوادگی<input name="name" required/></label><label>شماره موبایل<input name="phone" required/></label><label>استان و شهر<input name="city" required/></label><label>آدرس کامل<textarea name="address" required/></label><label>کد پستی<input name="postal" required/></label><label>روش پرداخت<select name="payment"><option>پرداخت آنلاین</option><option>پرداخت در محل</option></select></label><button className="btn full">ثبت سفارش</button></form><aside className="order-summary"><h2>خلاصه سبد</h2>{cart.map((p,i)=><div className="summary-item" key={i}><span>{p.name}<small>تعداد: ۱</small></span><b>{money(p.price)}</b></div>)}<div className="discount-box"><input value={discountCode} onChange={e=>setDiscountCode(e.target.value)} placeholder="کد تخفیف"/><button type="button" className="btn" onClick={applyDiscount}>اعمال</button>{discount?.error&&<small>{discount.error}</small>}{discount?.amount>0&&<small className="discount-ok">تخفیف: {money(discount.amount)}</small>}</div><div className="sum-line"><span>جمع کل</span><b>{money(finalTotal)}</b></div></aside></div></main>}
+import {useState} from 'react';
+import {useShop} from '../context/ShopContext';
+import {money} from '../data';
+
+export default function Checkout({navigate}){
+  const {cart,total,createOrder,previewDiscount}=useShop();
+  const [result,setResult]=useState(null),[discountCode,setDiscountCode]=useState(''),[discount,setDiscount]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const applyDiscount=async()=>{
+    setError('');setDiscount(null);
+    if(!discountCode.trim())return;
+    try{setDiscount(await previewDiscount(discountCode,total))}catch(e){setError(e.message||'کد تخفیف معتبر نیست.')}
+  };
+  const finalTotal=Math.max(0,total-Number(discount?.amount||0));
+  const submit=async e=>{
+    e.preventDefault();if(!cart.length)return;
+    setBusy(true);setError('');
+    try{
+      const f=new FormData(e.currentTarget);
+      const customer={name:f.get('name'),phone:f.get('phone'),city:f.get('city'),address:f.get('address'),postal:f.get('postal')};
+      const r=await createOrder({customer,items:cart,discountCode:discount?.code||null,paymentMethod:f.get('payment')});
+      setResult(r.order_number);
+    }catch(err){setError(err.message||'ثبت سفارش انجام نشد.')}
+    finally{setBusy(false)}
+  };
+  if(result)return <main className="checkout-page"><div className="success">سفارش شما با شماره <strong>{result}</strong> ثبت شد.<br/><small>برای پرداخت آنلاین، درگاه را در مرحله بعد به همین سفارش متصل می‌کنیم.</small><br/><button className="btn" onClick={()=>navigate('track',result)}>پیگیری سفارش</button></div></main>;
+  return <main className="checkout-page">
+    <div className="checkout-title"><h1>تکمیل سفارش</h1><p>اطلاعات ارسال را وارد کنید.</p></div>
+    {error&&<div className="error">{error}</div>}
+    <div className="checkout-layout">
+      <form onSubmit={submit} className="panel-form">
+        <h2>اطلاعات مشتری</h2>
+        <label>نام و نام خانوادگی<input name="name" required/></label>
+        <label>شماره موبایل<input name="phone" required/></label>
+        <label>استان و شهر<input name="city" required/></label>
+        <label>آدرس کامل<textarea name="address" required/></label>
+        <label>کد پستی<input name="postal" required/></label>
+        <label>روش پرداخت<select name="payment"><option>پرداخت آنلاین</option><option>پرداخت در محل</option></select></label>
+        <button className="btn full" disabled={busy}>{busy?'در حال ثبت سفارش...':'ثبت سفارش'}</button>
+      </form>
+      <aside className="order-summary"><h2>خلاصه سبد</h2>
+        {cart.map((p,i)=><div className="summary-item" key={i}><span>{p.name}<small>تعداد: ۱</small></span><b>{money(p.price)}</b></div>)}
+        <div className="discount-box"><input value={discountCode} onChange={e=>setDiscountCode(e.target.value)} placeholder="کد تخفیف"/><button type="button" className="btn" onClick={applyDiscount}>اعمال</button>{discount?.amount>0&&<small className="discount-ok">تخفیف: {money(discount.amount)}</small>}</div>
+        <div className="sum-line"><span>جمع کل</span><b>{money(finalTotal)}</b></div>
+      </aside>
+    </div>
+  </main>
+}

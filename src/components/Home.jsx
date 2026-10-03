@@ -5,14 +5,19 @@ import {ProductModal} from './Layout';
 
 export default function Home(){
  const {products,addToCart}=useShop();
- const [cat,setCat]=useState('همه'),[q,setQ]=useState(''),[selected,setSelected]=useState(null);\n const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[year,setYear]=useState('');\n const currentBrand=vehicleCatalog.find(v=>v.brand===brand);\n const currentModel=currentBrand?.models.find(m=>m.name===model);\n const vehicleSelected=Boolean(brand&&model&&year);\n const vehicleKey=brand&&model?brand+'|'+model:'';\n const clearVehicle=()=>{setBrand('');setModel('');setYear('')};
+ const [cat,setCat]=useState('همه'),[q,setQ]=useState(''),[selected,setSelected]=useState(null);
+ const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[year,setYear]=useState('');
+ const currentBrand=vehicleCatalog.find(v=>v.brand===brand);
+ const currentModel=currentBrand?.models.find(m=>m.name===model);
+ const vehicleSelected=Boolean(brand&&model&&year);
+ const vehicleKey=brand&&model?brand+'|'+model:'';
+ const clearVehicle=()=>{setBrand('');setModel('');setYear('')};
  const normalize=value=>String(value||'').replace(/ي/g,'ی').replace(/ك/g,'ک').trim().toLowerCase();
  const quickParts=['لنت','فیلتر هوا','فیلتر روغن','دیسک ترمز','روغن موتور','شمع','کمک فنر'];
  const filtered=useMemo(()=>{const term=normalize(q);return products.filter(p=>{const searchable=normalize([p.name,p.cat,...(p.searchTerms||[])].join(' '));return (cat==='همه'||p.cat===cat)&&(!term||searchable.includes(term))&&(!vehicleSelected||p.vehicles?.includes('ALL')||p.vehicles?.includes(vehicleKey));});},[products,q,cat,vehicleSelected,vehicleKey]);
  const selectCat=c=>{setCat(c);document.getElementById('shop')?.scrollIntoView({behavior:'smooth'})};
  const runSearch=term=>{setQ(term);setCat('همه');document.getElementById('shop')?.scrollIntoView({behavior:'smooth'})};
 
- const selectCat=c=>{setCat(c);document.getElementById('shop')?.scrollIntoView({behavior:'smooth'})};
  return <main id="home">
   <section className="hero">
    <div className="hero-bg"/>
@@ -47,7 +52,8 @@ export default function Home(){
    </div>
    <div className="quick-search">{quickParts.map(term=><button key={term} className={normalize(q)===normalize(term)?'active':''} onClick={()=>runSearch(term)}>{term}</button>)}{(q||vehicleSelected||cat!=='همه')&&<button className="clear-search" onClick={()=>{setQ('');setCat('همه')}}>حذف فیلترها ×</button>}</div>
    <div className="filter-row">{['همه',...categories.map(x=>x[0])].map(c=><button key={c} className={cat===c?'active':''} onClick={()=>setCat(c)}>{c}</button>)}</div>
-   {(vehicleSelected||q)&&<div className="vehicle-result">{vehicleSelected&&<>✓ خودرو: <b>{brand} {model} مدل {year}</b> — </>}{q&&<>جستجو: <b>«{q}»</b> — </>} {filtered.length} محصول پیدا شد.</div>}\n   <div className="product-grid">{filtered.map(p=><article className="product" key={p.id}>
+   {(vehicleSelected||q)&&<div className="vehicle-result">{vehicleSelected&&<>✓ خودرو: <b>{brand} {model} مدل {year}</b> — </>}{q&&<>جستجو: <b>«{q}»</b> — </>} {filtered.length} محصول پیدا شد.</div>}
+   <div className="product-grid">{filtered.map(p=><article className="product" key={p.id}>
     <button className="quick-view" onClick={()=>setSelected(p)}>جزئیات</button>
     <div className="product-image"><img src={p.img} alt={p.name}/><span>{p.cat}</span></div>
     <div className="product-body"><h3>{p.name}</h3><div className="spec">{vehicleSelected?'✓ سازگار با خودرو انتخابی':'کیفیت مناسب • مشاوره پیش از خرید'}</div><div className="product-bottom"><div className="price">{money(p.price)}</div><button className="add" onClick={()=>{addToCart(p.id);dispatchEvent(new Event('open-cart'))}}>افزودن به سبد</button></div></div>

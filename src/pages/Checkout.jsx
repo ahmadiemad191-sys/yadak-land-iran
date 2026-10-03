@@ -3,7 +3,7 @@ import {useShop} from '../context/ShopContext';
 import {money} from '../data';
 
 export default function Checkout({navigate}){
-  const {cart,total,createOrder,previewDiscount}=useShop();
+  const {cart,total,createOrder,createPayment,previewDiscount}=useShop();
   const [result,setResult]=useState(null),[discountCode,setDiscountCode]=useState(''),[discount,setDiscount]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const applyDiscount=async()=>{
     setError('');setDiscount(null);
@@ -17,12 +17,18 @@ export default function Checkout({navigate}){
     try{
       const f=new FormData(e.currentTarget);
       const customer={name:f.get('name'),phone:f.get('phone'),city:f.get('city'),address:f.get('address'),postal:f.get('postal')};
-      const r=await createOrder({customer,items:cart,discountCode:discount?.code||null,paymentMethod:f.get('payment')});
+      const paymentMethod=f.get('payment');
+      const r=await createOrder({customer,items:cart,discountCode:discount?.code||null,paymentMethod});
+      if(paymentMethod==='پرداخت آنلاین'){
+        const payment=await createPayment({orderNumber:r.order_number,phone:customer.phone});
+        window.location.href=payment.url;
+        return;
+      }
       setResult(r.order_number);
     }catch(err){setError(err.message||'ثبت سفارش انجام نشد.')}
     finally{setBusy(false)}
   };
-  if(result)return <main className="checkout-page"><div className="success">سفارش شما با شماره <strong>{result}</strong> ثبت شد.<br/><small>برای پرداخت آنلاین، درگاه را در مرحله بعد به همین سفارش متصل می‌کنیم.</small><br/><button className="btn" onClick={()=>navigate('track',result)}>پیگیری سفارش</button></div></main>;
+  if(result)return <main className="checkout-page"><div className="success">سفارش شما با شماره <strong>{result}</strong> ثبت شد.<br/><small>سفارش با موفقیت ثبت شد. می‌توانید وضعیت آن را پیگیری کنید.</small><br/><button className="btn" onClick={()=>navigate('track',result)}>پیگیری سفارش</button></div></main>;
   return <main className="checkout-page">
     <div className="checkout-title"><h1>تکمیل سفارش</h1><p>اطلاعات ارسال را وارد کنید.</p></div>
     {error&&<div className="error">{error}</div>}

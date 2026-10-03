@@ -1,12 +1,12 @@
 import {useState} from 'react';
-import {categories,money} from '../data';
+import {categories,money,vehicleCatalog} from '../data';
 import {useShop} from '../context/ShopContext';
 import {ProductModal} from './Layout';
 
 export default function Home(){
  const {products,addToCart}=useShop();
- const [cat,setCat]=useState('همه'),[q,setQ]=useState(''),[selected,setSelected]=useState(null);
- const filtered=products.filter(p=>(cat==='همه'||p.cat===cat)&&(!q||p.name.includes(q)||p.cat.includes(q)));
+ const [cat,setCat]=useState('همه'),[q,setQ]=useState(''),[selected,setSelected]=useState(null);\n const [brand,setBrand]=useState(''),[model,setModel]=useState(''),[year,setYear]=useState('');\n const currentBrand=vehicleCatalog.find(v=>v.brand===brand);\n const currentModel=currentBrand?.models.find(m=>m.name===model);\n const vehicleSelected=Boolean(brand&&model&&year);\n const vehicleKey=brand&&model?brand+'|'+model:'';\n const clearVehicle=()=>{setBrand('');setModel('');setYear('')};
+ const filtered=products.filter(p=>(cat==='همه'||p.cat===cat)&&(!q||p.name.includes(q)||p.cat.includes(q))&&(!vehicleSelected||p.vehicles?.includes('ALL')||p.vehicles?.includes(vehicleKey)));
  const selectCat=c=>{setCat(c);document.getElementById('shop')?.scrollIntoView({behavior:'smooth'})};
  return <main id="home">
   <section className="hero">
@@ -27,14 +27,14 @@ export default function Home(){
   </section>
 
   <section className="products" id="shop">
-   <div className="section-title"><div><span className="eyebrow">منتخب فروشگاه</span><h2>محصولات ویژه</h2></div>
+   <div className="section-title"><div><span className="eyebrow">{vehicleSelected?'قطعات سازگار با خودرو':'منتخب فروشگاه'}</span><h2>{vehicleSelected?`${brand} ${model} مدل ${year}`:'محصولات ویژه'}</h2></div>
     <div className="product-search"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="جستجوی نام قطعه یا دسته..."/><a href="#shop" onClick={()=>{setCat('همه');setQ('')}}>همه</a></div>
    </div>
    <div className="filter-row">{['همه',...categories.map(x=>x[0])].map(c=><button key={c} className={cat===c?'active':''} onClick={()=>setCat(c)}>{c}</button>)}</div>
-   <div className="product-grid">{filtered.map(p=><article className="product" key={p.id}>
+   {vehicleSelected&&<div className="vehicle-result">✓ فیلتر خودرو فعال است — {filtered.length} محصول سازگار نمایش داده می‌شود.</div>}\n   <div className="product-grid">{filtered.map(p=><article className="product" key={p.id}>
     <button className="quick-view" onClick={()=>setSelected(p)}>جزئیات</button>
     <div className="product-image"><img src={p.img} alt={p.name}/><span>{p.cat}</span></div>
-    <div className="product-body"><h3>{p.name}</h3><div className="spec">کیفیت مناسب • مشاوره پیش از خرید</div><div className="product-bottom"><div className="price">{money(p.price)}</div><button className="add" onClick={()=>{addToCart(p.id);dispatchEvent(new Event('open-cart'))}}>افزودن به سبد</button></div></div>
+    <div className="product-body"><h3>{p.name}</h3><div className="spec">{vehicleSelected?'✓ سازگار با خودرو انتخابی':'کیفیت مناسب • مشاوره پیش از خرید'}</div><div className="product-bottom"><div className="price">{money(p.price)}</div><button className="add" onClick={()=>{addToCart(p.id);dispatchEvent(new Event('open-cart'))}}>افزودن به سبد</button></div></div>
    </article>)}{!filtered.length&&<div className="empty">محصولی مطابق جستجو پیدا نشد.</div>}</div>
   </section>
 

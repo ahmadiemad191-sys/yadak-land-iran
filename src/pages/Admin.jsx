@@ -158,7 +158,7 @@ function ProductForm({initial,onCancel,onSaved}) {
 }
 
 export default function Admin(){
-  const {products,orders,discounts,session,isAdmin,signIn,signOut,updateOrderStatus,getOrderDetails,deleteProduct,addDiscount,updateDiscount,removeDiscount}=useShop();
+  const {products,orders,discounts,session,isAdmin,signIn,signOut,updateOrderStatus,getOrderDetails,deleteProduct,addDiscount,updateDiscount,removeDiscount,updatePaymentStatus}=useShop();
   const [showForm,setShowForm]=useState(false);
   const [editing,setEditing]=useState(null);
   const [search,setSearch]=useState('');
@@ -176,6 +176,7 @@ export default function Admin(){
   if(!isAdmin)return <main className="admin-page"><div className="error">این حساب دسترسی مدیر ندارد.<br/><button className="btn" onClick={signOut}>خروج</button></div></main>;
 
   const statuses=['در انتظار پرداخت','تأیید سفارش','آماده ارسال','ارسال شد','تحویل داده شد','لغو شد'];
+  const paymentStatuses=['در انتظار','موفق','ناموفق','مرجوع شده'];
   const filtered=products.filter(p=>{
     const q=search.trim().toLowerCase();
     return !q||[p.name,p.cat,...(p.searchTerms||[])].join(' ').toLowerCase().includes(q);
@@ -324,7 +325,11 @@ export default function Admin(){
                   <div>
                     <h3>پرداخت و مبلغ</h3>
                     <p><b>روش پرداخت:</b> {o.payment_method}</p>
-                    <p><b>وضعیت پرداخت:</b> {o.payment_status}</p>
+                    <p><b>وضعیت پرداخت:</b> <select value={o.payment_status} onClick={e=>e.stopPropagation()} onChange={async e=>{
+                      setOrderError('');
+                      try{await updatePaymentStatus(o.id,e.target.value);if(selectedOrder?.id===o.id)setSelectedOrder({...selectedOrder,payment_status:e.target.value})}
+                      catch(err){setOrderError(err?.message||'تغییر وضعیت پرداخت ناموفق بود')}
+                    }}>{paymentStatuses.map(s=><option key={s} value={s}>{s}</option>)}</select></p>
                     <p><b>جمع کالاها:</b> {money(o.subtotal)}</p>
                     <p><b>تخفیف:</b> {o.discount_amount?money(o.discount_amount):'بدون تخفیف'}</p>
                     <p><b>مبلغ نهایی:</b> {money(o.total)}</p>

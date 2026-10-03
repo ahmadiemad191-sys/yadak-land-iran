@@ -11,7 +11,7 @@
 - پنل مدیریت: Supabase Auth + نقش admin
 - Hosting فعلی: GitHub Pages
 
-Supabase برای React از `@supabase/supabase-js` و متغیرهای `VITE_SUPABASE_URL` و `VITE_SUPABASE_PUBLISHABLE_KEY` استفاده می‌کند. citeturn0search0
+Supabase برای React از `@supabase/supabase-js` و متغیرهای `VITE_SUPABASE_URL` و `VITE_SUPABASE_PUBLISHABLE_KEY` استفاده می‌کند.
 
 ## راه‌اندازی بک‌اند
 

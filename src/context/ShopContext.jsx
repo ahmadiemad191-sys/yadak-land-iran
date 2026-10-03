@@ -133,6 +133,12 @@ export function ShopProvider({children}){
     if(error)throw error;
     setDiscounts(prev=>prev.filter(x=>x.code!==code));
   };
+  const updatePaymentStatus=async(id,paymentStatus)=>{
+    if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');
+    const {error}=await supabase.from('orders').update({payment_status:paymentStatus,updated_at:new Date().toISOString()}).eq('id',id);
+    if(error)throw error;
+    setOrders(prev=>prev.map(o=>o.id===id?{...o,payment_status:paymentStatus}:o));
+  };
   const updateOrderStatus=async(id,status)=>{
     const {error}=await supabase.rpc('set_order_status',{p_order_id:id,p_status:status});
     if(error)throw error;
@@ -150,7 +156,7 @@ export function ShopProvider({children}){
   };
 
   const total=cart.reduce((s,p)=>s+Number(p.price||0),0);
-  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,updateDiscount,removeDiscount,updateOrderStatus,getOrderDetails,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
+  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,updateDiscount,removeDiscount,updatePaymentStatus,updateOrderStatus,getOrderDetails,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
   return <C.Provider value={value}>{children}</C.Provider>
 }
 export const useShop=()=>useContext(C);

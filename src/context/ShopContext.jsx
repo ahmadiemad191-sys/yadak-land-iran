@@ -93,7 +93,8 @@ export function ShopProvider({children}){
     setProducts(prev=>prev.filter(p=>String(p.id)!==String(id)));
   };
 
-  const previewDiscount=async(code,subtotal)=>{if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');const {data,error}=await supabase.rpc('preview_discount',{p_code:code,p_subtotal:Number(subtotal)});if(error)throw error;return data};\n  const createOrder=async({customer,items,discountCode,paymentMethod})=>{
+  const previewDiscount=async(code,subtotal)=>{if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');const {data,error}=await supabase.rpc('preview_discount',{p_code:code,p_subtotal:Number(subtotal)});if(error)throw error;return data};
+  const createOrder=async({customer,items,discountCode,paymentMethod})=>{
     if(!supabaseConfigured)throw new Error('اتصال فروشگاه به دیتابیس تنظیم نشده است.');
     const payload=items.reduce((a,p)=>{const found=a.find(x=>String(x.id)===String(p.id));found?found.quantity++:a.push({id:p.id,quantity:1});return a},[]);
     const {data,error}=await supabase.rpc('create_order',{p_customer:customer,p_items:payload,p_discount_code:discountCode||null,p_payment_method:paymentMethod||'پرداخت آنلاین'});

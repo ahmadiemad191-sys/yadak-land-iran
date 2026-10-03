@@ -116,11 +116,14 @@ function ProductForm({initial,onCancel,onSaved}) {
 }
 
 export default function Admin(){
-  const {products,orders,session,isAdmin,signIn,signOut,updateOrderStatus,deleteProduct}=useShop();
+  const {products,orders,session,isAdmin,signIn,signOut,updateOrderStatus,getOrderDetails,deleteProduct}=useShop();
   const [showForm,setShowForm]=useState(false);
   const [editing,setEditing]=useState(null);
   const [search,setSearch]=useState('');
   const [deleteBusy,setDeleteBusy]=useState(null);
+  const [selectedOrder,setSelectedOrder]=useState(null);
+  const [orderBusy,setOrderBusy]=useState(false);
+  const [orderError,setOrderError]=useState('');
 
   if(!supabaseConfigured)return <main className="admin-page"><div className="error">اتصال دیتابیس تنظیم نشده است.</div></main>;
   if(!session)return <Login onLogin={signIn}/>;
@@ -200,13 +203,60 @@ export default function Admin(){
       </section>
 
       <section className="admin-panel">
-        <div className="panel-title"><h2>سفارش‌ها</h2></div>
+        <div className="panel-title"><h2>سفارش‌ها</h2><span className="admin-count">{orders.length.toLocaleString('fa-IR')} سفارش</span></div>
+        {orderError&&<div className="error">{orderError}</div>}
         {orders.map(o=>(
-          <div className="admin-row order-admin-row" key={o.id}>
-            <span><strong>{o.order_number}</strong> — {o.customer_name}<small>{money(o.total)}</small></span>
-            <select value={o.status} onChange={e=>updateOrderStatus(o.id,e.target.value)}>
-              {statuses.map(s=><option key={s} value={s}>{s}</option>)}
-            </select>
+          <div key={o.id}>
+            <div className="admin-row order-admin-row" onClick={async()=>{
+              if(selectedOrder?.id===o.id){setSelectedOrder(null);return}
+              setOrderError('');setOrderBusy(true);
+              try{
+                const detail=await getOrderDetails(o.id);
+                setSelectedOrder({...o,...detail});
+              }catch(err){setOrderError(err?.message||'دریافت جزئیات سفارش ناموفق بود')}
+              finally{setOrderBusy(false)}
+            }}>
+              <span><strong>{o.order_number}</strong> — {o.customer_name}<small>{o.city} — {o.phone} — {money(o.total)}</small></span>
+              <select value={o.status} onClick={e=>e.stopPropagation()} onChange={async e=>{
+                try{await updateOrderStatus(o.id,e.target.value); if(selectedOrder?.id===o.id)setSelectedOrder({...selectedOrder,status:e.target.value})}
+                catch(err){setOrderError(err?.message||'تغییر وضعیت ناموفق بود')}
+              }}>
+                {statuses.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            {selectedOrder?.id===o.id&&(
+              <div className="order-detail">
+                <div className="order-detail-grid">
+                  <div>
+                    <h3>اطلاعات مشتری</h3>
+                    <p><b>نام:</b> {o.customer_name}</p>
+                    <p><b>موبایل:</b> {o.phone}</p>
+                    <p><b>شهر:</b> {o.city}</p>
+                    <p><b>آدرس:</b> {o.address}</p>
+                    <p><b>کد پستی:</b> {o.postal_code}</p>
+                  </div>
+                  <div>
+                    <h3>پرداخت و مبلغ</h3>
+                    <p><b>روش پرداخت:</b> {o.payment_method}</p>
+                    <p><b>وضعیت پرداخت:</b> {o.payment_status}</p>
+                    <p><b>جمع کالاها:</b> {money(o.subtotal)}</p>
+                    <p><b>تخفیف:</b> {o.discount_amount?money(o.discount_amount):'بدون تخفیف'}</p>
+                    <p><b>مبلغ نهایی:</b> {money(o.total)}</p>
+                  </div>
+                </div>
+                <div className="order-history">
+                  <h3>اقلام سفارش</h3>
+                  {orderBusy&&selectedOrder.items?.length===undefined?<p className="muted">در حال دریافت...</p>:selectedOrder.items.map(i=>
+                    <div className="order-item" key={i.id}><span>{i.product_name}<small>تعداد: {i.quantity}</small></span><b>{money(Number(i.unit_price)*Number(i.quantity))}</b></div>
+                  )}
+                  {!selectedOrder.items?.length&&<p className="muted">قلمی برای این سفارش ثبت نشده است.</p>}
+                </div>
+                <div className="order-history">
+                  <h3>سابقه وضعیت</h3>
+                  {selectedOrder.history.map(h=><div key={h.id}><span>{h.status}</span><small>{new Date(h.created_at).toLocaleString('fa-IR')}</small></div>)}
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {!orders.length&&<p className="muted">هنوز سفارشی ثبت نشده است.</p>}

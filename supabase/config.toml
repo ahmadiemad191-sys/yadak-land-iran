@@ -1,0 +1,5 @@
+[functions.payment-request]
+verify_jwt = false
+
+[functions.payment-callback]
+verify_jwt = false

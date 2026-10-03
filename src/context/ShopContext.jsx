@@ -113,9 +113,20 @@ export function ShopProvider({children}){
   const signIn=async(email,password)=>{if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password});if(error)throw error;setSession(data.session);const {data:p,error:pe}=await supabase.from('profiles').select('role').eq('id',data.user.id).maybeSingle();if(pe)throw pe;setIsAdmin(p?.role==='admin');return data};
   const signOut=async()=>{if(supabase)await supabase.auth.signOut()};
   const addDiscount=async item=>{
-    const {data,error}=await supabase.from('discount_codes').insert({code:item.code.trim().toUpperCase(),type:item.type,value:Number(item.value),min_order:Number(item.minOrder||0),active:true}).select().single();
+    const {data,error}=await supabase.from('discount_codes').insert({code:item.code.trim().toUpperCase(),type:item.type,value:Number(item.value),min_order:Number(item.minOrder||0),active:item.active!==false}).select().single();
     if(error)throw error;
     setDiscounts(prev=>[data,...prev]);
+  };
+  const updateDiscount=async(code,patch)=>{
+    if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');
+    const row={};
+    if(patch.type!==undefined)row.type=patch.type;
+    if(patch.value!==undefined)row.value=Number(patch.value);
+    if(patch.minOrder!==undefined)row.min_order=Number(patch.minOrder||0);
+    if(patch.active!==undefined)row.active=Boolean(patch.active);
+    const {data,error}=await supabase.from('discount_codes').update(row).eq('code',code).select().single();
+    if(error)throw error;
+    setDiscounts(prev=>prev.map(x=>x.code===code?data:x));
   };
   const removeDiscount=async code=>{
     const {error}=await supabase.from('discount_codes').delete().eq('code',code);
@@ -139,7 +150,7 @@ export function ShopProvider({children}){
   };
 
   const total=cart.reduce((s,p)=>s+Number(p.price||0),0);
-  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,removeDiscount,updateOrderStatus,getOrderDetails,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
+  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,updateDiscount,removeDiscount,updateOrderStatus,getOrderDetails,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
   return <C.Provider value={value}>{children}</C.Provider>
 }
 export const useShop=()=>useContext(C);

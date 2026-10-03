@@ -332,7 +332,7 @@ export default function Admin(){
                     }}>{paymentStatuses.map(s=><option key={s} value={s}>{s}</option>)}</select></p>
                     <p><b>جمع کالاها:</b> {money(o.subtotal)}</p>
                     <p><b>تخفیف:</b> {o.discount_amount?money(o.discount_amount):'بدون تخفیف'}</p>
-                    <p><b>مبلغ نهایی:</b> {money(o.total)}</p>
+                    <p><b>مبلغ نهایی:</b> {money(o.total)}</p>{selectedOrder.payments?.length>0&&<><p><b>درگاه:</b> {selectedOrder.payments[0].provider==='zarinpal'?'زرین‌پال':selectedOrder.payments[0].provider}</p><p><b>شماره مرجع:</b> {selectedOrder.payments[0].ref_id||'—'}</p><p><b>Authority:</b> {selectedOrder.payments[0].authority||'—'}</p></>}
                   </div>
                 </div>
                 <div className="order-history">

@@ -316,3 +316,24 @@ values
 (7,'فیلتر روغن استاندارد','فیلتر',190000,10,'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=700&q=80',array['ALL'],array['فیلتر','فیلتر روغن']),
 (8,'کمک فنر جلو خودرو','مصرفی',2650000,10,'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=700&q=80',array['پژو|۲۰۶','پژو|۲۰۷','پژو|۴۰۵','پژو|پارس','سایپا|پراید','سایپا|تیبا'],array['کمک فنر','کمک','فنر'])
 on conflict (id) do nothing;
+
+
+create or replace function public.preview_discount(p_code text, p_subtotal bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare v public.discount_codes%rowtype; v_amount bigint;
+begin
+  select * into v from public.discount_codes
+  where code=upper(trim(coalesce(p_code,''))) and active=true;
+  if not found then raise exception 'کد تخفیف معتبر نیست'; end if;
+  if p_subtotal < v.min_order then raise exception 'حداقل مبلغ خرید برای این کد رعایت نشده است'; end if;
+  if v.type='percent' then v_amount:=least(p_subtotal,floor(p_subtotal*v.value/100.0)::bigint);
+  else v_amount:=least(p_subtotal,v.value); end if;
+  return jsonb_build_object('code',v.code,'amount',v_amount,'type',v.type,'value',v.value);
+end;
+$$;
+revoke all on function public.preview_discount(text,bigint) from public;
+grant execute on function public.preview_discount(text,bigint) to anon, authenticated;

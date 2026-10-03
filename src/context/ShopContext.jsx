@@ -45,12 +45,17 @@ export function ShopProvider({children}){
       await loadProducts();
       setLoading(false);
     })();
-    const {data:{subscription}}=supabase.auth.onAuthStateChange(async(_event,s)=>{
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>{
       setSession(s);
-      if(s){
-        const {data:p}=await supabase.from('profiles').select('role').eq('id',s.user.id).maybeSingle();
+      if(!s){
+        setIsAdmin(false);
+        return;
+      }
+      setTimeout(async()=>{
+        const {data:p,error}=await supabase.from('profiles').select('role').eq('id',s.user.id).maybeSingle();
+        if(error){console.error(error);setIsAdmin(false);return}
         setIsAdmin(p?.role==='admin');
-      }else setIsAdmin(false);
+      },0);
     });
     return()=>{mounted=false;subscription.unsubscribe()};
   },[]);

@@ -36,6 +36,48 @@ const emptyForm={
   name:'',cat:'مصرفی',price:'',stock:'0',img:'',searchTerms:'',vehicles:['ALL'],active:true
 };
 
+function DiscountForm({initial,onCancel,onSaved}) {
+  const {addDiscount,updateDiscount}=useShop();
+  const [form,setForm]=useState(initial||{code:'',type:'percent',value:'',minOrder:'0',active:true});
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const set=(key,value)=>setForm(f=>({...f,[key]:value}));
+  const submit=async e=>{
+    e.preventDefault(); setError('');
+    const value=Number(form.value), minOrder=Number(form.minOrder||0);
+    if(!form.code.trim()&&!form.id){setError('کد تخفیف را وارد کنید.');return}
+    if(value<=0||minOrder<0){setError('مقدار تخفیف و حداقل مبلغ خرید را صحیح وارد کنید.');return}
+    if(form.type==='percent'&&(value>100)){setError('تخفیف درصدی نمی‌تواند بیشتر از ۱۰۰٪ باشد.');return}
+    setBusy(true);
+    try{
+      if(form.id) await updateDiscount(form.code,{type:form.type,value,minOrder,active:form.active});
+      else await addDiscount({code:form.code,type:form.type,value,minOrder,active:form.active});
+      onSaved();
+    }catch(err){console.error(err);setError(err?.message||'ذخیره کد تخفیف ناموفق بود')}
+    finally{setBusy(false)}
+  };
+  return (
+    <form className="admin-form" onSubmit={submit}>
+      {error&&<div className="error">{error}</div>}
+      <div className="form-two">
+        <label>کد تخفیف<input value={form.code} disabled={Boolean(form.id)} onChange={e=>set('code',e.target.value.toUpperCase())} placeholder="مثلاً YADAK10" required/></label>
+        <label>نوع تخفیف<select value={form.type} onChange={e=>set('type',e.target.value)}>
+          <option value="percent">درصدی</option><option value="fixed">مبلغ ثابت</option>
+        </select></label>
+      </div>
+      <div className="form-two">
+        <label>{form.type==='percent'?'درصد تخفیف':'مبلغ تخفیف (تومان)'}<input type="number" min="1" max={form.type==='percent'?'100':undefined} value={form.value} onChange={e=>set('value',e.target.value)} required/></label>
+        <label>حداقل مبلغ خرید (تومان)<input type="number" min="0" value={form.minOrder} onChange={e=>set('minOrder',e.target.value)}/></label>
+      </div>
+      <label className="check"><input type="checkbox" checked={form.active} onChange={e=>set('active',e.target.checked)}/> کد تخفیف فعال باشد</label>
+      <div className="form-actions">
+        <button className="btn" type="submit" disabled={busy}>{busy?'در حال ذخیره...':form.id?'ذخیره تغییرات':'افزودن کد تخفیف'}</button>
+        <button className="btn ghost" type="button" onClick={onCancel} disabled={busy}>انصراف</button>
+      </div>
+    </form>
+  );
+}
+
 function ProductForm({initial,onCancel,onSaved}) {
   const {addProduct,updateProduct}=useShop();
   const [form,setForm]=useState(initial||emptyForm);
@@ -116,7 +158,7 @@ function ProductForm({initial,onCancel,onSaved}) {
 }
 
 export default function Admin(){
-  const {products,orders,session,isAdmin,signIn,signOut,updateOrderStatus,getOrderDetails,deleteProduct}=useShop();
+  const {products,orders,discounts,session,isAdmin,signIn,signOut,updateOrderStatus,getOrderDetails,deleteProduct,addDiscount,updateDiscount,removeDiscount}=useShop();
   const [showForm,setShowForm]=useState(false);
   const [editing,setEditing]=useState(null);
   const [search,setSearch]=useState('');
@@ -124,6 +166,10 @@ export default function Admin(){
   const [selectedOrder,setSelectedOrder]=useState(null);
   const [orderBusy,setOrderBusy]=useState(false);
   const [orderError,setOrderError]=useState('');
+  const [showDiscountForm,setShowDiscountForm]=useState(false);
+  const [editingDiscount,setEditingDiscount]=useState(null);
+  const [discountBusy,setDiscountBusy]=useState(null);
+  const [discountError,setDiscountError]=useState('');
 
   if(!supabaseConfigured)return <main className="admin-page"><div className="error">اتصال دیتابیس تنظیم نشده است.</div></main>;
   if(!session)return <Login onLogin={signIn}/>;
@@ -200,6 +246,46 @@ export default function Admin(){
           </div>
         ))}
         {!filtered.length&&<p className="muted">محصولی پیدا نشد.</p>}
+      </section>
+
+      <section className="admin-panel">
+        <div className="panel-title">
+          <div><h2>کدهای تخفیف</h2><span className="admin-count">{discounts.length.toLocaleString('fa-IR')} کد</span></div>
+          <button className="btn" onClick={()=>{setEditingDiscount(null);setShowDiscountForm(true)}}>+ افزودن کد تخفیف</button>
+        </div>
+        {discountError&&<div className="error">{discountError}</div>}
+        {showDiscountForm&&(
+          <div className="admin-notice">
+            <DiscountForm
+              initial={editingDiscount||{code:'',type:'percent',value:'',minOrder:'0',active:true}}
+              onCancel={()=>{setShowDiscountForm(false);setEditingDiscount(null)}}
+              onSaved={()=>{setShowDiscountForm(false);setEditingDiscount(null)}}
+            />
+          </div>
+        )}
+        {discounts.map(d=>(
+          <div className="admin-row product-admin-row" key={d.code}>
+            <div className="admin-product-main">
+              <span>
+                <strong>{d.code}</strong>
+                <small>{d.type==='percent'?d.value+'٪ تخفیف':money(d.value)+' تخفیف'} — حداقل خرید: {money(d.min_order)} — {d.active?'فعال':'غیرفعال'}</small>
+              </span>
+            </div>
+            <div className="admin-actions">
+              <button className="edit-btn" onClick={()=>{setEditingDiscount({...d,id:true,minOrder:d.min_order});setShowDiscountForm(true);setDiscountError('')}}>ویرایش</button>
+              <button className="edit-btn" disabled={discountBusy===d.code} onClick={async()=>{
+                setDiscountError('');setDiscountBusy(d.code);
+                try{await updateDiscount(d.code,{active:!d.active})}catch(err){setDiscountError(err?.message||'تغییر وضعیت کد ناموفق بود')}finally{setDiscountBusy(null)}
+              }}>{discountBusy===d.code?'...':d.active?'غیرفعال کردن':'فعال کردن'}</button>
+              <button className="delete-btn" disabled={discountBusy===d.code} onClick={async()=>{
+                if(!window.confirm('کد تخفیف «'+d.code+'» حذف شود؟'))return;
+                setDiscountError('');setDiscountBusy(d.code);
+                try{await removeDiscount(d.code)}catch(err){setDiscountError(err?.message||'حذف کد ناموفق بود')}finally{setDiscountBusy(null)}
+              }}>حذف</button>
+            </div>
+          </div>
+        ))}
+        {!discounts.length&&<p className="muted">هنوز کد تخفیفی ثبت نشده است.</p>}
       </section>
 
       <section className="admin-panel">

@@ -7,7 +7,8 @@ function Login({onLogin}) {
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [error,setError]=useState('');
-  const submit=async e=>{e.preventDefault();setError('');try{await onLogin(email,password)}catch(err){setError(err.message||'ورود ناموفق بود')}};
+  const [busy,setBusy]=useState(false);
+  const submit=async e=>{e?.preventDefault();if(busy)return;setError('');setBusy(true);try{await onLogin(email,password)}catch(err){console.error(err);setError(err?.message||'ورود ناموفق بود')}finally{setBusy(false)}};
   return (
     <main className="admin-page">
       <div className="admin-panel" style={{maxWidth:480,margin:'60px auto'}}>
@@ -16,7 +17,7 @@ function Login({onLogin}) {
         <form onSubmit={submit} className="admin-form">
           <label>ایمیل<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>
           <label>رمز عبور<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>
-          <button className="btn full">ورود</button>
+          <button type="submit" className="btn full" onClick={submit} disabled={busy}>{busy?"در حال ورود...":"ورود"}</button>
         </form>
       </div>
     </main>

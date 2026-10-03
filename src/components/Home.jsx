@@ -56,7 +56,7 @@ export default function Home(){
    <div className="product-grid">{filtered.map(p=><article className="product" key={p.id}>
     <button className="quick-view" onClick={()=>setSelected(p)}>جزئیات</button>
     <div className="product-image"><img src={p.img} alt={p.name}/><span>{p.cat}</span></div>
-    <div className="product-body"><h3>{p.name}</h3><div className="spec">{vehicleSelected?'✓ سازگار با خودرو انتخابی':'کیفیت مناسب • مشاوره پیش از خرید'}</div><div className="product-bottom"><div className="price">{money(p.price)}</div><button className="add" onClick={()=>{addToCart(p.id);dispatchEvent(new Event('open-cart'))}}>افزودن به سبد</button></div></div>
+    <div className="product-body"><h3>{p.name}</h3><div className="spec">{vehicleSelected?'✓ سازگار با خودرو انتخابی':'کیفیت مناسب • مشاوره پیش از خرید'}</div><div className="product-bottom"><div className="price">{money(p.price)}</div><button className="add" disabled={Number(p.stock??10)<=0} onClick={()=>{if(Number(p.stock??10)>0){addToCart(p.id);dispatchEvent(new Event('open-cart'))}}}>{Number(p.stock??10)>0?'افزودن به سبد':'ناموجود'}</button></div></div>
    </article>)}{!filtered.length&&<div className="empty">محصولی مطابق جستجو و خودروی انتخاب‌شده پیدا نشد.</div>}</div>
   </section>
 

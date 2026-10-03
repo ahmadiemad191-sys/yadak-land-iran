@@ -127,9 +127,19 @@ export function ShopProvider({children}){
     if(error)throw error;
     await loadAdminData();
   };
+  const getOrderDetails=async(id)=>{
+    if(!supabase)throw new Error('اتصال دیتابیس تنظیم نشده است.');
+    const [{data:items,error:ie},{data:history,error:he}]=await Promise.all([
+      supabase.from('order_items').select('*').eq('order_id',id).order('id'),
+      supabase.from('order_status_history').select('*').eq('order_id',id).order('created_at',{ascending:true})
+    ]);
+    if(ie)throw ie;
+    if(he)throw he;
+    return {items:items||[],history:history||[]};
+  };
 
   const total=cart.reduce((s,p)=>s+Number(p.price||0),0);
-  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,removeDiscount,updateOrderStatus,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
+  const value=useMemo(()=>({products,cart,addToCart,removeCart,total,loading,session,isAdmin,createOrder,signIn,signOut,orders,discounts,previewDiscount,addProduct,updateProduct,deleteProduct,addDiscount,removeDiscount,updateOrderStatus,getOrderDetails,refreshProducts:loadProducts}),[products,cart,total,loading,session,isAdmin,orders,discounts]);
   return <C.Provider value={value}>{children}</C.Provider>
 }
 export const useShop=()=>useContext(C);
